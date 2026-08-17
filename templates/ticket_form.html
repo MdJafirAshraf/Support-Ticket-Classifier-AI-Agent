@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Contact Support</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="form-container">
+        <h1>Contact Support</h1>
+        <p class="subtitle">Tell us what's going on — we'll route it to the right team.</p>
+
+        <form id="ticket-form">
+            <label for="subject">Subject</label>
+            <input type="text" id="subject" name="subject" placeholder="Brief summary of your issue">
+
+            <label for="body">Message</label>
+            <textarea id="body" name="body" rows="6" required
+                placeholder="Describe your issue in detail..."></textarea>
+
+            <label for="customer_email">Email</label>
+            <input type="email" id="customer_email" name="customer_email" required
+                placeholder="you@example.com">
+
+            <button type="submit">Submit ticket</button>
+        </form>
+
+        <div id="result" class="result hidden"></div>
+    </div>
+
+    <script>
+        document.getElementById("ticket-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const payload = {
+                channel: "web_form",
+                subject: document.getElementById("subject").value,
+                body: document.getElementById("body").value,
+                customer_email: document.getElementById("customer_email").value,
+            };
+
+            const resultBox = document.getElementById("result");
+            resultBox.classList.remove("hidden");
+            resultBox.textContent = "Submitting...";
+
+            try {
+                const res = await fetch("/tickets", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Something went wrong");
+
+                resultBox.innerHTML = `
+                    <p><strong>Ticket received.</strong></p>
+                    <p>Category: ${data.category}</p>
+                    <p>Priority: ${data.priority}</p>
+                    <p>Routed to: ${data.assigned_team}</p>
+                    ${data.escalated ? "<p class='escalated'>This has been flagged for human review.</p>" : ""}
+                `;
+                e.target.reset();
+            } catch (err) {
+                resultBox.textContent = "Error: " + err.message;
+            }
+        });
+    </script>
+</body>
+</html>
