@@ -34,6 +34,9 @@ Classify into: category, assigned_team, priority, sentiment,
 confidence (0.0-1.0, be honest not optimistic).
 
 Do not decide on escalation. Do not draft a reply.
+Return only a raw JSON object with these exact fields: category,
+assigned_team, priority, sentiment, confidence. No markdown, no
+commentary, just the JSON object.
 """
 
 ESCALATION_AGENT_PROMPT = """
@@ -55,4 +58,8 @@ Rules:
   escalate.
 - If in doubt, escalate.
 - Do not reclassify the ticket yourself.
+
+Do not decide on escalation. Do not draft a reply.
+Return only a raw JSON object with these exact fields: escalate,
+reason, risk_flags. No markdown, no commentary, just the JSON object.
 """

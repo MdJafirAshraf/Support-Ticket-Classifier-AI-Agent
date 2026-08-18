@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 class TicketClassification(BaseModel):
     """The LLM's structured output — validated before anything trusts it."""
+
     category: Literal["billing", "shipping", "product_defect", "account", "refund", "other"] = Field(
         description="The single best-fit issue category."
     )
@@ -22,7 +23,4 @@ class TicketClassification(BaseModel):
 class EscalationDecision(BaseModel):
     escalate: bool = Field(description="Whether a human agent must take over.")
     reason: str = Field(description="Why this does or doesn't need escalation.")
-    risk_flags: list[str] = Field(
-        default_factory=list,
-        description="Specific triggers found, e.g. 'refund_over_threshold', 'legal_threat', 'angry_tone'.",
-    )
+    risk_flags: list[str] = Field(...)
