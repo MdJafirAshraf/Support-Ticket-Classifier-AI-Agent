@@ -32,7 +32,7 @@ classifier_agent = {
     "description": "Classifies a support ticket into category, team, priority, sentiment, confidence.",
     "system_prompt": CLASSIFIER_AGENT_PROMPT,
     "tools": [],
-    "response_format": TicketClassification,
+    # "response_format": TicketClassification,
     "middleware": [LoggingMiddleware(agent_name="classifier")],
 }
 
@@ -41,7 +41,7 @@ escalation_agent = {
     "description": "Decides whether a classified ticket needs human escalation.",
     "system_prompt": ESCALATION_AGENT_PROMPT,
     "tools": [],
-    "response_format": EscalationDecision,
+    # "response_format": EscalationDecision,
     "middleware": [LoggingMiddleware(agent_name="escalation")],
 }
 
@@ -49,6 +49,6 @@ deep_agent = create_deep_agent(
     model=model,
     system_prompt=COORDINATOR_PROMPT,
     tools=[],
-    middleware=[LoggingMiddleware(agent_name="coordinator"), IterationGuardMiddleware(max_iterations=4)],
+    middleware=[LoggingMiddleware(agent_name="coordinator"), IterationGuardMiddleware(max_iterations=3)],
     subagents=[classifier_agent, escalation_agent],
 )
