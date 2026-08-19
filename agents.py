@@ -1,4 +1,4 @@
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from deepagents import create_deep_agent, HarnessProfile, register_harness_profile
 
 from core.config import get_settings
@@ -21,8 +21,8 @@ register_harness_profile(
 # from langchain_core.rate_limiters import InMemoryRateLimiter
 # rate_limiter = InMemoryRateLimiter(requests_per_second=0.15, check_every_n_seconds=0.5, max_bucket_size=1)
 
-model = ChatGroq(
-    api_key=settings.groq_api_key,
+model = ChatGoogleGenerativeAI(
+    api_key=settings.gemini_api_key,
     model=settings.classifier_model,
     temperature=settings.classifier_temperature,
 )
@@ -32,7 +32,7 @@ classifier_agent = {
     "description": "Classifies a support ticket into category, team, priority, sentiment, confidence.",
     "system_prompt": CLASSIFIER_AGENT_PROMPT,
     "tools": [],
-    # "response_format": TicketClassification,
+    "response_format": TicketClassification,
     "middleware": [LoggingMiddleware(agent_name="classifier")],
 }
 
@@ -41,7 +41,7 @@ escalation_agent = {
     "description": "Decides whether a classified ticket needs human escalation.",
     "system_prompt": ESCALATION_AGENT_PROMPT,
     "tools": [],
-    # "response_format": EscalationDecision,
+    "response_format": EscalationDecision,
     "middleware": [LoggingMiddleware(agent_name="escalation")],
 }
 
