@@ -3,14 +3,16 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from schemas.ticket import TicketCreate, TicketResponse
-from services import sanitizer, classifier, validator, router as team_router
+from services import sanitizer, deep_classifier, router as team_router
 from services.cost_tracker import compute_cost
 from models import Ticket, Classification, Assignment
 from core.logging_config import get_logger
+from core.config import get_settings
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 logger = get_logger("tickets")
 
+settings = get_settings()
 
 @router.post("", response_model=TicketResponse)
 def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
@@ -28,12 +30,14 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(ticket)
 
-    # 2. classify — the one LLM call in the pipeline
-    llm_result, usage, prompt_version, model_name = classifier.classify_and_escalate(sanitized_body)
+    result, escalation, usage = deep_classifier.classify_and_escalate(sanitized_body)
 
-    # 3. validate — schema check, confidence gate, retry/fallback happens inside
-    result, is_fallback = validator.validate(llm_result, sanitized_body)
+    is_fallback = False  # deep-agent path has no retry/fallback logic yet — see note below
+    prompt_version = "deep_agent_v1"
+    model_name = settings.classifier_model
 
+    # usage sums tokens across all 3 model calls (coordinator + classifier + escalation),
+    # not just one — cost_usd below reflects the full delegation, not a single call
     cost_usd = compute_cost(usage["input_tokens"], usage["output_tokens"])
 
     classification = Classification(
@@ -53,8 +57,10 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(classification)
 
-    # 4. route — deterministic category -> team, escalation already folded into confidence gate
-    final_team = team_router.resolve_team(result)
+    # 3. route — escalation subagent's decision takes priority over the
+    #    deterministic category -> team lookup
+    final_team = "support_team" if escalation.escalate else team_router.resolve_team(result)
+
     assignment = Assignment(
         ticket_id=ticket.id,
         classification_id=classification.id,
@@ -64,7 +70,7 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     db.commit()
 
     logger.info(f"ticket={ticket.id} category={result.category} "
-                f"team={final_team} confidence={result.confidence} fallback={is_fallback}")
+                f"team={final_team} confidence={result.confidence} escalate={escalation.escalate}")
 
     return TicketResponse(
         id=ticket.id,
@@ -74,5 +80,5 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
         sentiment=result.sentiment,
         assigned_team=final_team,
         confidence=result.confidence,
-        escalated=(final_team == "support_team" and result.category != "other"),
+        escalated=escalation.escalate,
     )
