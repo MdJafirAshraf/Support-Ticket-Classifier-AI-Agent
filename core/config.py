@@ -7,7 +7,8 @@ class Settings(BaseSettings):
 
     # LLM
     groq_api_key: str
-    classifier_model: str = "openai/gpt-oss-120b"
+    gemini_api_key: str
+    classifier_model: str = "gemini-3.5-flash-lite"
     classifier_temperature: float = 0.2
     classifier_max_output_tokens: int = 512
 
