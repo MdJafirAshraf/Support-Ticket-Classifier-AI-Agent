@@ -8,16 +8,16 @@ from database import Base
 class Classification(Base):
     __tablename__ = "classifications"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    ticket_id = Column(String, ForeignKey("tickets.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    ticket_id = Column(String(36), ForeignKey("tickets.id"), nullable=False)
 
-    category = Column(String, nullable=False)
-    priority = Column(String, nullable=False)
-    sentiment = Column(String, nullable=False)
+    category = Column(String(50), nullable=False)
+    priority = Column(String(20), nullable=False)
+    sentiment = Column(String(20), nullable=False)
     confidence = Column(Float, nullable=False)
 
-    prompt_version = Column(String, nullable=False)
-    model_name = Column(String, nullable=False)
+    prompt_version = Column(String(50), nullable=False)
+    model_name = Column(String(100), nullable=False)
     input_tokens = Column(Integer, nullable=True)
     output_tokens = Column(Integer, nullable=True)
     cost_usd = Column(Float, nullable=True)

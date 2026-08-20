@@ -8,12 +8,12 @@ from database import Base
 class Assignment(Base):
     __tablename__ = "assignments"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    ticket_id = Column(String, ForeignKey("tickets.id"), nullable=False)
-    classification_id = Column(String, ForeignKey("classifications.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    ticket_id = Column(String(36), ForeignKey("tickets.id"), nullable=False)
+    classification_id = Column(String(36), ForeignKey("classifications.id"), nullable=False)
 
-    assigned_team = Column(String, nullable=False)
-    status = Column(String, default="pending")          # pending | in_progress | resolved
+    assigned_team = Column(String(100), nullable=False)
+    status = Column(String(20), default="pending")          # pending | in_progress | resolved
     assigned_at = Column(DateTime, default=datetime.utcnow)
 
     ticket = relationship("Ticket", back_populates="assignments")
