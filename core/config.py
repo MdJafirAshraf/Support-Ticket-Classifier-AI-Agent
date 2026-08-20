@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     cost_per_output_token: float = 0.30 / 1_000_000
 
     # Database
-    database_url: str = "sqlite:///./tickets.db"
+    database_url: str = "mysql+pymysql://root:tiger@localhost:3306/tickets"
 
     # App
     app_name: str = "Support Ticket Classifier"
