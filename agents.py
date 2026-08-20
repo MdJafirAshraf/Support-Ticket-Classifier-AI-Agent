@@ -2,12 +2,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from deepagents import create_deep_agent, HarnessProfile, register_harness_profile
 
 from core.config import get_settings
+from langchain_core.rate_limiters import InMemoryRateLimiter
 from prompts.agent_prompts import COORDINATOR_PROMPT, CLASSIFIER_AGENT_PROMPT, ESCALATION_AGENT_PROMPT
 from schemas.classification import TicketClassification, EscalationDecision
 from middleware.agent_middleware import LoggingMiddleware, IterationGuardMiddleware
 
 settings = get_settings()
-
 
 register_harness_profile(
     settings.classifier_model,
@@ -18,13 +18,13 @@ register_harness_profile(
     ),
 )
 
-# from langchain_core.rate_limiters import InMemoryRateLimiter
-# rate_limiter = InMemoryRateLimiter(requests_per_second=0.15, check_every_n_seconds=0.5, max_bucket_size=1)
+rate_limiter = InMemoryRateLimiter(requests_per_second=0.15, check_every_n_seconds=0.5, max_bucket_size=1)
 
 model = ChatGoogleGenerativeAI(
     api_key=settings.gemini_api_key,
     model=settings.classifier_model,
     temperature=settings.classifier_temperature,
+    rate_limiter=rate_limiter
 )
 
 classifier_agent = {

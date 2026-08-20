@@ -24,6 +24,8 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
         raw_subject=payload.subject,
         raw_body=payload.body,
         sanitized_body=sanitized_body,
+        pii_flagged=pii_flagged,
+        injection_flagged=injection_flagged,
         customer_email=payload.customer_email,
     )
     db.add(ticket)

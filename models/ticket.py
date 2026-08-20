@@ -1,6 +1,6 @@
 from datetime import datetime
 import uuid
-from sqlalchemy import Column, DateTime, String, Text
+from sqlalchemy import Column, DateTime, String, Boolean, Text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -14,6 +14,8 @@ class Ticket(Base):
     raw_subject = Column(String(255), nullable=True)
     raw_body = Column(Text, nullable=False)
     sanitized_body = Column(Text, nullable=False)
+    pii_flagged = Column(Boolean, default=False, nullable=False)
+    injection_flagged = Column(Boolean, default=False, nullable=False)
     customer_email = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
