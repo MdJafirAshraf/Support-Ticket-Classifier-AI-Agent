@@ -1,4 +1,5 @@
 import re
+import langsmith as ls
 from core.logging_config import get_logger
 
 logger = get_logger("sanitizer")
@@ -39,6 +40,7 @@ def detect_injection(text: str) -> bool:
     return any(re.search(pattern, lowered) for pattern in INJECTION_PATTERNS)
 
 
+@ls.traceable(run_type="tool", name="sanitize_ticket")
 def sanitize(raw_body: str) -> tuple[str, bool, bool]:
     """
     Full sanitization pass: PII redaction + injection scan.

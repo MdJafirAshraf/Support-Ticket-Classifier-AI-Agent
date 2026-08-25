@@ -10,6 +10,9 @@ from middleware.error_handler import register_error_handlers
 from database import Base, engine
 from routers import tickets, web
 
+from core.tracing import configure_tracing
+configure_tracing() 
+
 configure_logging()
 logger = get_logger("main")
 settings = get_settings()

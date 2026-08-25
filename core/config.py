@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     classifier_temperature: float = 0.2
     classifier_max_output_tokens: int = 512
 
+    # LangSmith
+    langsmith_tracing: bool = True
+    langsmith_api_key: str | None = None
+    langsmith_project: str = "support-ticket-classifier"
+
     # Pipeline behavior
     confidence_threshold: float = 0.6
     max_classification_retries: int = 1

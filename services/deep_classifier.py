@@ -1,5 +1,4 @@
-import json
-import time
+import time, json
 from langchain_core.messages import AIMessage, ToolMessage
 
 from agents import deep_agent
@@ -9,12 +8,43 @@ from core.logging_config import get_logger
 logger = get_logger("deep_classifier")
 
 
+def classify_and_escalate(
+    sanitized_body: str,
+    request_id: str,
+    ticket_id: str,
+) -> tuple[TicketClassification, EscalationDecision, dict]:
+    start = time.perf_counter()
+
+    result = deep_agent.invoke(
+        {"messages": [{"role": "user", "content": sanitized_body}]},
+        config={
+            "run_name": "ticket_classification",
+            "tags": ["ticket-pipeline", "production"],
+            "metadata": {
+                "request_id": request_id,
+                "ticket_id": ticket_id,
+            },
+        },
+    )
+    duration = time.perf_counter() - start
+
+    subagent_results = _extract_subagent_results(result.get("messages", []))
+    classification_raw = subagent_results.get("classifier")
+    escalation_raw = subagent_results.get("escalation")
+
+    if classification_raw is None or escalation_raw is None:
+        logger.error(f"[{request_id}] Deep agent run did not produce both subagent results")
+        raise ValueError("Incomplete deep agent run")
+
+    classification = TicketClassification.model_validate(classification_raw)
+    escalation = EscalationDecision.model_validate(escalation_raw)
+    usage = _sum_usage(result)
+
+    logger.info(f"[{request_id}] deep agent run complete duration={duration:.3f}s escalate={escalation.escalate}")
+    return classification, escalation, usage
+
+
 def _extract_subagent_results(messages: list) -> dict:
-    """
-    Maps each 'task' tool call's tool_call_id -> subagent_type (from the
-    AIMessage that issued it), then matches that id to the corresponding
-    ToolMessage to pull out its JSON-serialized structured_response.
-    """
     call_id_to_subagent = {}
     for msg in messages:
         if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
@@ -26,38 +56,20 @@ def _extract_subagent_results(messages: list) -> dict:
     for msg in messages:
         if isinstance(msg, ToolMessage) and msg.name == "task":
             subagent_type = call_id_to_subagent.get(msg.tool_call_id)
-            if not subagent_type:
-                continue
-            try:
-                results[subagent_type] = json.loads(msg.content)
-            except (json.JSONDecodeError, TypeError) as exc:
-                logger.warning(f"Could not parse structured output for '{subagent_type}': {exc}")
-
+            if subagent_type:
+                try:
+                    results[subagent_type] = json.loads(_get_text(msg.content))
+                except (json.JSONDecodeError, TypeError) as exc:
+                    logger.warning(f"Could not parse structured output for '{subagent_type}': {exc}")
     return results
 
 
-def classify_and_escalate(sanitized_body: str) -> tuple[TicketClassification, EscalationDecision, dict]:
-    start = time.perf_counter()
-    result = deep_agent.invoke({"messages": [{"role": "user", "content": sanitized_body}]})
-    duration = time.perf_counter() - start
-
-    logger.info(f"deep agent raw result: {result}")
-
-    subagent_results = _extract_subagent_results(result.get("messages", []))
-    classification_raw = subagent_results.get("classifier")
-    escalation_raw = subagent_results.get("escalation")
-
-    if classification_raw is None or escalation_raw is None:
-        logger.error(f"Deep agent run did not produce both subagent results: {subagent_results.keys()}")
-        raise ValueError("Incomplete deep agent run")
-
-    classification = TicketClassification.model_validate(classification_raw)
-    escalation = EscalationDecision.model_validate(escalation_raw)
-
-    usage = _sum_usage(result)
-
-    logger.info(f"deep agent run complete duration={duration:.3f}s escalate={escalation.escalate}")
-    return classification, escalation, usage
+def _get_text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(block.get("text", "") for block in content if isinstance(block, dict))
+    return str(content)
 
 
 def _sum_usage(result: dict) -> dict:

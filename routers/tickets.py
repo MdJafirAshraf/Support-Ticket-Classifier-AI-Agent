@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -15,7 +15,10 @@ logger = get_logger("tickets")
 settings = get_settings()
 
 @router.post("", response_model=TicketResponse)
-def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
+def create_ticket(payload: TicketCreate, request: Request, db: Session = Depends(get_db)):
+    # Set by RequestLoggingMiddleware
+    request_id = request.state.request_id
+
     # 1. sanitize — PII masking + injection scan, before anything else sees the text
     sanitized_body, pii_flagged, injection_flagged = sanitizer.sanitize(payload.body)
 
@@ -32,7 +35,11 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(ticket)
 
-    result, escalation, usage = deep_classifier.classify_and_escalate(sanitized_body)
+    result, escalation, usage = deep_classifier.classify_and_escalate(
+        sanitized_body,
+        request_id=request_id,
+        ticket_id=ticket.id,
+    )
 
     is_fallback = False  # deep-agent path has no retry/fallback logic yet — see note below
     prompt_version = "deep_agent_v1"
