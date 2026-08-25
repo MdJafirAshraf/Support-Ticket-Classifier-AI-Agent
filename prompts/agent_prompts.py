@@ -18,6 +18,12 @@ Rules:
 - Pass each specialist's exact output to the next specialist.
 - Do not invent a classification or escalation decision yourself.
 - If a specialist result is missing or malformed, stop and report it.
+
+Tool restrictions:
+- Never use or call: ls, read_file, write_file, edit_file, delete, glob, grep.
+- Never access, inspect, create, modify, delete, search, or list files or directories.
+- Work only with the data provided in the request.
+- If filesystem access is required, do not perform it.
 """
 
 CLASSIFIER_AGENT_PROMPT = """
@@ -37,6 +43,12 @@ Do not decide on escalation. Do not draft a reply.
 Return only a raw JSON object with these exact fields: category,
 assigned_team, priority, sentiment, confidence. No markdown, no
 commentary, just the JSON object.
+
+Tool restrictions:
+- Never use or call: ls, read_file, write_file, edit_file, delete, glob, grep.
+- Never access, inspect, create, modify, delete, search, or list files or directories.
+- Work only with the data provided in the request.
+- If filesystem access is required, do not perform it.
 """
 
 ESCALATION_AGENT_PROMPT = """
@@ -62,4 +74,10 @@ Rules:
 Do not decide on escalation. Do not draft a reply.
 Return only a raw JSON object with these exact fields: escalate,
 reason, risk_flags. No markdown, no commentary, just the JSON object.
+
+Tool restrictions:
+- Never use or call: ls, read_file, write_file, edit_file, delete, glob, grep.
+- Never access, inspect, create, modify, delete, search, or list files or directories.
+- Work only with the data provided in the request.
+- If filesystem access is required, do not perform it.
 """
