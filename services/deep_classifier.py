@@ -12,18 +12,21 @@ def classify_and_escalate(
     sanitized_body: str,
     request_id: str,
     ticket_id: str,
+    customer_id: str,
 ) -> tuple[TicketClassification, EscalationDecision, dict]:
     start = time.perf_counter()
 
     result = deep_agent.invoke(
-        {"messages": [{"role": "user", "content": sanitized_body}]},
+        {
+            "messages": [{
+                "role": "user",
+                "content": f"[customer_id: {customer_id}]\n\n{sanitized_body}",
+            }]
+        },
         config={
             "run_name": "ticket_classification",
             "tags": ["ticket-pipeline", "production"],
-            "metadata": {
-                "request_id": request_id,
-                "ticket_id": ticket_id,
-            },
+            "metadata": {"request_id": request_id, "ticket_id": ticket_id, "customer_id": customer_id},
         },
     )
     duration = time.perf_counter() - start

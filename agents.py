@@ -3,9 +3,10 @@ from deepagents import create_deep_agent, HarnessProfile, register_harness_profi
 
 from core.config import get_settings
 from langchain_core.rate_limiters import InMemoryRateLimiter
-from prompts.agent_prompts import COORDINATOR_PROMPT, CLASSIFIER_AGENT_PROMPT, ESCALATION_AGENT_PROMPT
+from tools.customer_tool import get_last_ticket_details
 from schemas.classification import TicketClassification, EscalationDecision
 from middleware.agent_middleware import LoggingMiddleware, IterationGuardMiddleware
+from prompts.agent_prompts import COORDINATOR_PROMPT, CLASSIFIER_AGENT_PROMPT, ESCALATION_AGENT_PROMPT
 
 settings = get_settings()
 
@@ -48,7 +49,7 @@ escalation_agent = {
 deep_agent = create_deep_agent(
     model=model,
     system_prompt=COORDINATOR_PROMPT,
-    tools=[],
+    tools=[get_last_ticket_details],
     middleware=[LoggingMiddleware(agent_name="coordinator"), IterationGuardMiddleware(max_iterations=3)],
     subagents=[classifier_agent, escalation_agent],
 )

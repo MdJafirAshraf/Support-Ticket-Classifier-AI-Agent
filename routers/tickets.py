@@ -1,3 +1,4 @@
+import hashlib, base64
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,17 @@ logger = get_logger("tickets")
 
 settings = get_settings()
 
+def generate_customer_id(email: str) -> str:
+    normalized_email = email.strip().lower()
+
+    digest = hashlib.sha256(
+        normalized_email.encode("utf-8")
+    ).digest()
+
+    encoded = base64.b32encode(digest).decode("utf-8")
+
+    return f"CUS_{encoded[:6]}"
+
 @router.post("", response_model=TicketResponse)
 def create_ticket(payload: TicketCreate, request: Request, db: Session = Depends(get_db)):
     # Set by RequestLoggingMiddleware
@@ -21,6 +33,14 @@ def create_ticket(payload: TicketCreate, request: Request, db: Session = Depends
 
     # 1. sanitize — PII masking + injection scan, before anything else sees the text
     sanitized_body, pii_flagged, injection_flagged = sanitizer.sanitize(payload.body)
+
+    # Generate the unique cutomer id based on customer email
+    customer_id = None
+    existing_customer = db.query(Ticket).filter(Ticket.customer_email == payload.customer_email).first()
+    if existing_customer:
+        customer_id = existing_customer.customer_id
+    else:
+        customer_id = generate_customer_id(payload.customer_email)
 
     ticket = Ticket(
         channel=payload.channel,
@@ -30,6 +50,7 @@ def create_ticket(payload: TicketCreate, request: Request, db: Session = Depends
         pii_flagged=pii_flagged,
         injection_flagged=injection_flagged,
         customer_email=payload.customer_email,
+        customer_id=customer_id
     )
     db.add(ticket)
     db.commit()
@@ -39,6 +60,7 @@ def create_ticket(payload: TicketCreate, request: Request, db: Session = Depends
         sanitized_body,
         request_id=request_id,
         ticket_id=ticket.id,
+        customer_id=customer_id
     )
 
     is_fallback = False  # deep-agent path has no retry/fallback logic yet — see note below
