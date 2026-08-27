@@ -1,8 +1,9 @@
+from langchain.agents.middleware import PIIMiddleware
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.rate_limiters import InMemoryRateLimiter
 from deepagents import create_deep_agent, HarnessProfile, register_harness_profile
 
 from core.config import get_settings
-from langchain_core.rate_limiters import InMemoryRateLimiter
 from tools.customer_tool import get_last_ticket_details
 from schemas.classification import TicketClassification, EscalationDecision
 from middleware.agent_middleware import LoggingMiddleware, IterationGuardMiddleware
@@ -50,6 +51,11 @@ deep_agent = create_deep_agent(
     model=model,
     system_prompt=COORDINATOR_PROMPT,
     tools=[get_last_ticket_details],
-    middleware=[LoggingMiddleware(agent_name="coordinator"), IterationGuardMiddleware(max_iterations=3)],
+    middleware=[
+        LoggingMiddleware(agent_name="coordinator"), 
+        IterationGuardMiddleware(max_iterations=3),
+        PIIMiddleware("email", strategy="mask", apply_to_input=True),
+        PIIMiddleware("phone", detector=r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b", strategy="mask", apply_to_input=True),
+        PIIMiddleware("credit_card", strategy="mask", apply_to_input=True),],
     subagents=[classifier_agent, escalation_agent],
 )

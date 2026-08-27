@@ -10,32 +10,41 @@ logger = get_logger("tools.customer")
 @tool
 def get_last_ticket_details(customer_id: str) -> dict:
     """
-    Look up this customer's most recent prior support ticket, if one
-    exists. Use this before classifying to check whether the customer
-    has raised this same issue before — repeat tickets about the same
-    problem are a signal worth factoring into priority and escalation.
+    Look up this customer's most recent prior support ticket.
+
+    The current ticket has already been inserted into the database, so
+    this function intentionally excludes the latest ticket and returns
+    the ticket immediately before it.
 
     Args:
-        customer_id: The customer's unique ID (not their email).
+        customer_id: The customer's unique ID.
 
     Returns:
-        A dict describing the last ticket (category, priority, status,
-        how long ago it was created), or {"found": False} if this is
-        a first-time customer.
+        A dict containing the previous ticket details, or {"found": False}
+        if the customer has no previous ticket.
     """
     db = SessionLocal()
+
     try:
-        last_ticket = (
+        tickets = (
             db.query(Ticket)
             .filter(Ticket.customer_id == customer_id)
             .order_by(desc(Ticket.created_at))
-            .first()
+            .limit(2)
+            .all()
         )
-        if last_ticket is None:
-            return {"found": False, "message": "No prior tickets for this customer."}
 
-        # Pull the most recent classification for that ticket, if any —
-        # the ticket alone doesn't say what it was about or how it was handled
+        # No previous ticket
+        if len(tickets) < 2:
+            return {
+                "found": False,
+                "message": "No prior tickets for this customer."
+            }
+
+        # tickets[0] = current ticket
+        # tickets[1] = most recent previous ticket
+        last_ticket = tickets[1]
+
         last_classification = (
             db.query(Classification)
             .filter(Classification.ticket_id == last_ticket.id)
@@ -48,10 +57,20 @@ def get_last_ticket_details(customer_id: str) -> dict:
             "ticket_id": last_ticket.id,
             "subject": last_ticket.raw_subject,
             "created_at": last_ticket.created_at.isoformat(),
-            "category": last_classification.category if last_classification else None,
-            "priority": last_classification.priority if last_classification else None,
+            "category": (
+                last_classification.category
+                if last_classification
+                else None
+            ),
+            "priority": (
+                last_classification.priority
+                if last_classification
+                else None
+            ),
         }
-        logger.info(f"customer_id={customer_id} last_ticket={last_ticket.id}")
+
+        logger.info(f"customer_id={customer_id} " f"previous_ticket={last_ticket.id}")
+
         return result
 
     finally:
